@@ -1,0 +1,339 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// All IDs are UUIDs. Enums are represented as Int fields (mapped in code).
+
+model Companies {
+  Id                  String   @id @default(uuid()) @db.Uuid
+  Name                String   @db.VarChar(150)
+  CNPJ                String?  @unique @db.Char(14)
+  Retention_Days      Int      @default(60)
+  Cache_Fetched_Days  Int      @default(7)
+  Created_At          DateTime @default(now())
+  Updated_At          DateTime @updatedAt
+  Deleted_At          DateTime?
+
+  // Relations
+  Users         Users[]
+  Clients       Clients[]
+  Queues        Queues[]
+  Categories    Categories[]
+  Sessions      Sessions[]
+  Chats         Chats[]
+  Messages      Messages[]
+  Tickets       Tickets[]
+  Media         Media[]
+  WebhookEvents Webhook_Events[]
+  Outbox        Outbox[]
+  SessionLogs   Session_Logs[]
+}
+
+model Users {
+  Id           String   @id @default(uuid()) @db.Uuid
+  Company_Id   String?  @db.Uuid
+  Name         String   @db.VarChar(100)
+  Email        String   @unique @db.VarChar(150)
+  Password_Hash String  @db.VarChar(255)
+  Role         Int      // ADMIN/MANAGER/USER mapped in code
+  Is_Active    Boolean  @default(true)
+  Created_At   DateTime @default(now())
+  Updated_At   DateTime @updatedAt
+  Deleted_At   DateTime?
+
+  Company Companies? @relation(fields: [Company_Id], references: [Id])
+  Tickets Tickets[]
+  UserQueues User_Queues[]
+
+  @@index([Company_Id])
+}
+
+model Clients {
+  Id               String   @id @default(uuid()) @db.Uuid
+  Company_Id       String   @db.Uuid
+  Name             String   @db.VarChar(120)
+  WhatsApp_Number  String   @db.VarChar(20)
+  WA_User_Id       String?  @db.VarChar(64)
+  Chat_Id_Alias    String?  @db.VarChar(128) // optional alias/reference
+  Profile_Pic_URL  String?
+  Is_Blocked       Boolean  @default(false)
+  Last_Contact_At  DateTime?
+  Language         String?  @db.VarChar(10)
+  Created_At       DateTime @default(now())
+  Updated_At       DateTime @updatedAt
+  Deleted_At       DateTime?
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Chats   Chats[]
+  Tickets Tickets[]
+
+  @@unique([Company_Id, WhatsApp_Number])
+  @@index([Company_Id])
+}
+
+model Queues {
+  Id               String   @id @default(uuid()) @db.Uuid
+  Company_Id       String   @db.Uuid
+  Name             String   @db.VarChar(100)
+  Greeting_Message String
+  Is_Active        Boolean  @default(true)
+  Created_At       DateTime @default(now())
+  Updated_At       DateTime @updatedAt
+  Deleted_At       DateTime?
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Tickets Tickets[]
+  UserQueues User_Queues[]
+
+  @@index([Company_Id])
+}
+
+model Categories {
+  Id          String   @id @default(uuid()) @db.Uuid
+  Company_Id  String   @db.Uuid
+  Name        String   @db.VarChar(100)
+  Description String   @db.VarChar(255)
+  Created_At  DateTime @default(now())
+  Deleted_At  DateTime?
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Tickets Tickets[]
+
+  @@index([Company_Id])
+}
+
+model Tickets {
+  Id               String   @id @default(uuid()) @db.Uuid
+  Company_Id       String   @db.Uuid
+  Client_Id        String   @db.Uuid
+  User_Id          String?  @db.Uuid
+  Queue_Id         String?  @db.Uuid
+  Category_Id      String?  @db.Uuid
+  Chat_Id          String?  @db.Uuid
+  Subject          String   @db.VarChar(200)
+  Resolution_Text  String?
+  Status           Int      // TicketStatus
+  Priority         Int?
+  SLA_Due_At       DateTime?
+  Last_Message_At  DateTime?
+  Reopened_Count   Int      @default(0)
+  Created_At       DateTime @default(now())
+  Updated_At       DateTime @updatedAt
+  Deleted_At       DateTime?
+
+  Company   Companies  @relation(fields: [Company_Id], references: [Id])
+  Client    Clients    @relation(fields: [Client_Id], references: [Id])
+  User      Users?     @relation(fields: [User_Id], references: [Id])
+  Queue     Queues?    @relation(fields: [Queue_Id], references: [Id])
+  Category  Categories? @relation(fields: [Category_Id], references: [Id])
+  Chat      Chats?     @relation(fields: [Chat_Id], references: [Id])
+
+  @@index([Company_Id])
+  @@index([Client_Id])
+  @@index([User_Id])
+  @@index([Queue_Id])
+  @@index([Category_Id])
+  @@index([Chat_Id])
+}
+
+model Sessions {
+  Id              String   @id @default(uuid()) @db.Uuid
+  Company_Id      String   @db.Uuid
+  Session_Name    String   @db.VarChar(100)
+  Phone_Number    String   @db.VarChar(20)
+  Status          Int      // SessionStatus
+  Session_Token   String   @db.VarChar(255)
+  Last_Heartbeat  DateTime @default(now())
+  Webhook_URL     String?
+  Proxy_Config    String?
+  QR_SVG          String?
+  QR_Expires_At   DateTime?
+  Reauth_Required Boolean  @default(false)
+  Storage_Type    String?
+  Created_At      DateTime @default(now())
+  Updated_At      DateTime @updatedAt
+  Deleted_At      DateTime?
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Chats   Chats[]
+  Messages Messages[]
+  WebhookEvents Webhook_Events[]
+  SessionLogs   Session_Logs[]
+  Outbox        Outbox[]
+
+  @@unique([Company_Id, Phone_Number])
+  @@index([Company_Id])
+}
+
+model Chats {
+  Id              String   @id @default(uuid()) @db.Uuid
+  Company_Id      String   @db.Uuid
+  Session_Id      String   @db.Uuid
+  Client_Id       String?  @db.Uuid
+  WA_Chat_Id      String   @db.VarChar(64)
+  Type            Int      // ChatType
+  Is_Archived     Boolean  @default(false)
+  Is_Muted        Boolean  @default(false)
+  Last_Message_At DateTime?
+  Unread_Count    Int      @default(0)
+  Created_At      DateTime @default(now())
+  Updated_At      DateTime @updatedAt
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Session Sessions  @relation(fields: [Session_Id], references: [Id])
+  Client  Clients?  @relation(fields: [Client_Id], references: [Id])
+  Messages Messages[]
+  Outbox   Outbox[]
+  Tickets  Tickets[] 
+
+  @@unique([Company_Id, Session_Id, WA_Chat_Id])
+  @@index([Company_Id])
+  @@index([Session_Id])
+  @@index([Client_Id])
+}
+
+model Media {
+  Id               String   @id @default(uuid()) @db.Uuid
+  Company_Id       String   @db.Uuid
+  Storage_Provider String   @db.VarChar(20)
+  Storage_Key      String
+  Mime_Type        String
+  Size_Bytes       Int
+  SHA256           String?  @unique
+  Created_At       DateTime @default(now())
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Messages Messages[]
+
+  @@index([Company_Id])
+}
+
+model Messages {
+  Id                     String    @id @default(uuid()) @db.Uuid
+  Company_Id             String    @db.Uuid
+  Session_Id             String    @db.Uuid
+  Chat_Id                String    @db.Uuid
+  Direction              Int       // 0=IN,1=OUT
+  Type                   Int       // MessageType
+  Body                   String?
+  Caption                String?
+  Media_Id               String?   @db.Uuid
+  WA_Message_Id          String    @db.VarChar(128)
+  WA_Timestamp           DateTime?
+  Status                 Int       // MessageStatus
+  Error_Code             String?
+  Error_Message          String?
+  Metadata_JSON          String?
+  Fetched_From_WhatsApp  Boolean   @default(false)
+  Cache_Until            DateTime?
+  Created_At             DateTime  @default(now())
+  Updated_At             DateTime  @updatedAt
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Session Sessions  @relation(fields: [Session_Id], references: [Id])
+  Chat    Chats     @relation(fields: [Chat_Id], references: [Id])
+  Media   Media?    @relation(fields: [Media_Id], references: [Id])
+  StatusHistory Message_Status_History[]
+
+  @@unique([Company_Id, Session_Id, WA_Message_Id])
+  @@index([Company_Id])
+  @@index([Session_Id])
+  @@index([Chat_Id, Created_At])
+  @@index([Media_Id])
+  @@index([Cache_Until])
+}
+
+model Message_Status_History {
+  Id          String   @id @default(uuid()) @db.Uuid
+  Message_Id  String   @db.Uuid
+  Status      Int      // MessageStatus
+  Occurred_At DateTime @default(now())
+
+  Message Messages @relation(fields: [Message_Id], references: [Id])
+
+  @@index([Message_Id])
+}
+
+model Webhook_Events {
+  Id             String   @id @default(uuid()) @db.Uuid
+  Company_Id     String   @db.Uuid
+  Session_Id     String   @db.Uuid
+  Event_Type     String   @db.VarChar(50)
+  Payload_JSON   String
+  Received_At    DateTime @default(now())
+  Processed_At   DateTime?
+  Process_Status Int      // 0=PENDING,1=DONE,2=ERROR
+  Error_Message  String?
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Session Sessions  @relation(fields: [Session_Id], references: [Id])
+
+  @@index([Company_Id])
+  @@index([Session_Id])
+}
+
+model Outbox {
+  Id               String   @id @default(uuid()) @db.Uuid
+  Company_Id       String   @db.Uuid
+  Session_Id       String   @db.Uuid
+  Chat_Id          String   @db.Uuid
+  To_WA_User_Id    String   @db.VarChar(64)
+  Payload_JSON     String
+  Idempotency_Key  String   @unique
+  Attempts         Int      @default(0)
+  Next_Attempt_At  DateTime?
+  Status           Int      // 0=PENDING,1=SENT,2=FAILED
+  Last_Error       String?
+  Created_At       DateTime @default(now())
+  Updated_At       DateTime @updatedAt
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Session Sessions  @relation(fields: [Session_Id], references: [Id])
+  Chat    Chats     @relation(fields: [Chat_Id], references: [Id])
+
+  @@index([Company_Id])
+  @@index([Session_Id])
+  @@index([Chat_Id])
+}
+
+model Session_Logs {
+  Id         String   @id @default(uuid()) @db.Uuid
+  Company_Id String   @db.Uuid
+  Session_Id String   @db.Uuid
+  Level      Int      // 0=INFO,1=WARN,2=ERROR
+  Message    String
+  Meta_JSON  String?
+  Created_At DateTime @default(now())
+
+  Company Companies @relation(fields: [Company_Id], references: [Id])
+  Session Sessions  @relation(fields: [Session_Id], references: [Id])
+
+  @@index([Company_Id])
+  @@index([Session_Id])
+}
+
+model User_Queues {
+  Id         String   @id @default(uuid()) @db.Uuid
+  User_Id    String   @db.Uuid
+  Queue_Id   String   @db.Uuid
+  Created_At DateTime @default(now())
+  
+  User  Users  @relation(fields: [User_Id], references: [Id], onDelete: Cascade)
+  Queue Queues @relation(fields: [Queue_Id], references: [Id], onDelete: Cascade)
+  
+  @@unique([User_Id, Queue_Id])
+  @@index([User_Id])
+  @@index([Queue_Id])
+}

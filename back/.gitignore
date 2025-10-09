@@ -1,0 +1,39 @@
+# Dependências
+node_modules/
+
+# Build/Compilado
+dist/
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.production
+.env.test
+
+# Sessões do WhatsApp (criado automaticamente)
+tokens/
+
+# Código gerado pelo Prisma
+/src/generated/prisma
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+logs/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporários
+*.tmp
+*.temp
