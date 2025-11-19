@@ -4,22 +4,39 @@ Sistema de atendimento de chamados via WhatsApp com gestão de empresas, usuári
 
 ## Stack Técnica
 
-- **Framework**: React 18 com TypeScript
+- **Backend**: Node.js + Fastify + Prisma + PostgreSQL
+- **Frontend**: React 18 com TypeScript
 - **Estilos**: TailwindCSS
 - **Roteamento**: React Router DOM
 - **Estado**: Context API
 - **Gráficos**: Recharts
 - **Ícones**: Lucide React
+- **WhatsApp**: WPPConnect
 
-## Instalação
+## 🚀 Instalação
 
+### Linux/Ubuntu
+
+Para instalação completa no Ubuntu/Linux, consulte o guia detalhado:
+
+📖 **[INSTALL_LINUX.md](INSTALL_LINUX.md)** - Guia completo de instalação
+
+Ou use o script automatizado:
 ```bash
-npm install
+bash install-linux.sh
 ```
 
-## Desenvolvimento
+### Desenvolvimento Local
 
 ```bash
+# Backend
+cd back
+npm install
+npm run dev
+
+# Frontend
+cd "front sysZap"
+npm install
 npm run dev
 ```
 
