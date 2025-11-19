@@ -16,26 +16,30 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Verificar se está rodando como root
+# Verificar se está rodando como root (permitir, mas avisar)
 if [ "$EUID" -eq 0 ]; then 
-   echo -e "${RED}Por favor, não execute como root. Use sudo quando necessário.${NC}"
-   exit 1
+   echo -e "${YELLOW}⚠️  Executando como root. Continuando...${NC}"
+   echo ""
+   # Não usar sudo quando já é root
+   SUDO_CMD=""
+else
+   SUDO_CMD="sudo"
 fi
 
 # PARTE 1: Atualizar sistema
 echo -e "${YELLOW}[1/8] Atualizando sistema...${NC}"
-sudo apt update
-sudo apt upgrade -y
+${SUDO_CMD} apt update
+${SUDO_CMD} apt upgrade -y
 
 # PARTE 2: Instalar dependências básicas
 echo -e "${YELLOW}[2/8] Instalando dependências básicas...${NC}"
-sudo apt install -y curl wget git build-essential
+${SUDO_CMD} apt install -y curl wget git build-essential
 
 # PARTE 3: Instalar Node.js
 echo -e "${YELLOW}[3/8] Instalando Node.js...${NC}"
 if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_20.x | ${SUDO_CMD} -E bash -
+    ${SUDO_CMD} apt install -y nodejs
 else
     echo -e "${GREEN}Node.js já está instalado: $(node --version)${NC}"
 fi
@@ -43,9 +47,9 @@ fi
 # PARTE 4: Instalar PostgreSQL
 echo -e "${YELLOW}[4/8] Instalando PostgreSQL...${NC}"
 if ! command -v psql &> /dev/null; then
-    sudo apt install -y postgresql postgresql-contrib
-    sudo systemctl start postgresql
-    sudo systemctl enable postgresql
+    ${SUDO_CMD} apt install -y postgresql postgresql-contrib
+    ${SUDO_CMD} systemctl start postgresql
+    ${SUDO_CMD} systemctl enable postgresql
 else
     echo -e "${GREEN}PostgreSQL já está instalado${NC}"
 fi
@@ -65,7 +69,17 @@ echo ""
 # Nota: PostgreSQL requer aspas para nomes com caracteres especiais
 # Desabilitar set -e temporariamente para ignorar erro se banco já existir
 set +e
-sudo -u postgres psql <<EOF
+
+# Escolher comando baseado se é root ou não
+if [ "$EUID" -eq 0 ]; then
+    # Se for root, usar runuser
+    PSQL_CMD="runuser -u postgres -- psql"
+else
+    # Se não for root, usar sudo
+    PSQL_CMD="sudo -u postgres psql"
+fi
+
+$PSQL_CMD <<EOF
 -- Criar banco de dados (ignorar erro se já existir)
 CREATE DATABASE "$DB_NAME";
 
